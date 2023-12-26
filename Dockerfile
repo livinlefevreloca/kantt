@@ -9,4 +9,5 @@ FROM alpine:latest AS collector
 RUN apk --no-cache add ca-certificates && mkdir /app
 WORKDIR /app
 COPY --from=builder /app/collector /app/collector
+COPY --from=builder /app/config.yaml /app/config.yaml
 ENTRYPOINT ["/app/collector"]
