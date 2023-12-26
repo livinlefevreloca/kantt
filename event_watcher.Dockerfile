@@ -2,7 +2,7 @@ FROM go:1.21-alpine AS builder
 
 COPY . /app
 WORKDIR /app
-RUN go build -o event_watcher svc/event_watcher
+RUN go build -o collector svc/collector
 
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates && mkdir /app
