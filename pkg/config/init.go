@@ -1,7 +1,13 @@
+// Package config standardizes config for our application.
+// This package must not be imported anywhere except `main` packages.
+// Anything that requires the config deeper than the main package must
+// be configured with dependency injection, passing config down through
+// the intermediate layers.
 package config
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -23,4 +29,12 @@ func init() {
 	if err != nil {
 		panic(fmt.Errorf("fatal error reading config file: %w", err))
 	}
+
+	viper.SetDefault("log.level", "info")
+	log_level := viper.GetString("log.level")
+	level, err := logrus.ParseLevel(log_level)
+	if err != nil {
+		panic(fmt.Errorf("fatal parsing log level: %w", err))
+	}
+	logrus.SetLevel(level)
 }
