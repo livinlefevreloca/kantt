@@ -1,4 +1,4 @@
-module github.com/endophage/kant
+module github.com/endophage/kantt
 
 go 1.21.4
 

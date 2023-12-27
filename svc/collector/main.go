@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/endophage/kant/lib/config"
-	"github.com/endophage/kant/lib/eventsource"
-	"github.com/endophage/kant/lib/storage"
+	"github.com/endophage/kantt/pkg/config"
+	"github.com/endophage/kantt/pkg/eventsource"
+	"github.com/endophage/kantt/pkg/storage"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"k8s.io/apimachinery/pkg/api/meta"

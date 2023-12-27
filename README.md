@@ -12,4 +12,12 @@ There are 2 core services defined in this repository:
  
 Both services are intended to run within a cluster
 
+## Repository structure
 
+`/cmd` - Contains a directory per main package for short lived commands
+  like database migration.
+
+`/pkg` - Packages intended for import by other packages.
+
+`/svc` - Contains a directory per main package for long lived services
+  like the collector and dashboard.

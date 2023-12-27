@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/endophage/kant/lib/config"
-	"github.com/endophage/kant/lib/storage"
+	"github.com/endophage/kantt/pkg/config"
+	"github.com/endophage/kantt/pkg/storage"
 )
 
 func main() {
