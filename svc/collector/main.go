@@ -7,8 +7,9 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"k8s.io/apimachinery/pkg/api/meta"
+	api_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
-	v1 "k8s.io/client-go/kubernetes/typed/events/v1"
+	events_v1 "k8s.io/client-go/kubernetes/typed/events/v1"
 	"k8s.io/client-go/rest"
 	"log"
 	"os"
@@ -20,11 +21,11 @@ func main() {
 	db := config.Database()
 
 	// Setup event watcher
-	eventClient, err := v1.NewForConfig(&rest.Config{})
+	eventClient, err := events_v1.NewForConfig(&rest.Config{})
 	if err != nil {
 		panic(err)
 	}
-	eventWatcher, err := eventsource.NewWatcher(eventClient.Events(""))
+	eventWatcher, err := eventsource.NewWatcher(eventClient.Events(api_v1.NamespaceAll))
 	if err != nil {
 		panic(err)
 	}
