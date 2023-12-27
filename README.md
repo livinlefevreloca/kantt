@@ -21,3 +21,8 @@ Both services are intended to run within a cluster
 
 `/svc` - Contains a directory per main package for long lived services
   like the collector and dashboard.
+
+## Logging
+
+github.com/sirupsen/logrus is used for structured logging.
+
