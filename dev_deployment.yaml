@@ -1,1 +1,66 @@
 # Basic k8s dev deployment
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: kantt-collector
+---
+# kantt-collector-cluster-role
+# Allows the collector service to listent to events
+# in all namespaces
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kantt-collector-cluster-role
+rules:
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["list", "watch"]
+---
+# kantt-collector-cluster-role-binding
+# Binds the collector service account to the cluster role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kantt-collector-cluster-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kantt-collector-cluster-role
+subjects:
+- kind: ServiceAccount
+  name: kantt-collector
+  namespace: kantt-collector
+---
+# kantt-collector-service-account
+# Service account for the collector service
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kantt-collector
+  namespace: kantt-collector
+---
+# kantt-collector-deployment
+# Deployment for the collector service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kantt-collector
+  namespace: kantt-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kantt-collector
+  template:
+    metadata:
+      labels:
+          app: kantt-collector
+    spec:
+      serviceAccountName: kantt-collector
+      containers:
+      - name: collector
+        image: endophage/kantt-collector:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+---
