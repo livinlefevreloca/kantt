@@ -77,6 +77,7 @@ func getOrCreateResource(db *gorm.DB, event watch.Event) storage.Resource {
 	if err != nil {
 		log.Println("error getting object meta: ", err)
 	}
+	// fmt.Println(obj)
 	newResource := storage.Resource{
 		GroupVersionKind: obj.GetObjectKind().GroupVersionKind(),
 		Name:             objMeta.GetName(),
