@@ -2,11 +2,20 @@ package config
 
 import (
 	"fmt"
+
+	"github.com/livinlefevreloca/kantt/pkg/storage"
 	"github.com/spf13/viper"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
+
+func RunMigrations(db *gorm.DB, models ...interface{}) {
+	// Migrate the schema
+	for _, model := range models {
+		db.AutoMigrate(model)
+	}
+}
 
 func Database() *gorm.DB {
 	var (
@@ -14,8 +23,11 @@ func Database() *gorm.DB {
 		db     *gorm.DB
 		err    error
 	)
+	fmt.Println("engine: ", engine)
 	if engine == "sqlite" {
 		db, err = gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
+		// If running with sqlite we need to migrate the schema on startup
+		RunMigrations(db, &storage.Resource{}, &storage.Event{})
 	} else if engine == "postgres" {
 		db, err = gorm.Open(
 			postgres.Open(

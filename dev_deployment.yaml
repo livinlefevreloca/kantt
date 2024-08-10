@@ -12,9 +12,9 @@ kind: ClusterRole
 metadata:
   name: kantt-collector-cluster-role
 rules:
-- apiGroups: [""]
+- apiGroups: ["events.k8s.io"]
   resources: ["events"]
-  verbs: ["list", "watch"]
+  verbs: ["list", "watch", "get"]
 ---
 # kantt-collector-cluster-role-binding
 # Binds the collector service account to the cluster role
@@ -59,8 +59,8 @@ spec:
       serviceAccountName: kantt-collector
       containers:
       - name: collector
-        image: endophage/kantt-collector:latest
-        imagePullPolicy: IfNotPresent
+        image: livinlefevrel0ca/kantt-collector:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8080
 ---

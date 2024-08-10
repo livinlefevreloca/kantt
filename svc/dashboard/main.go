@@ -1,7 +1,26 @@
 package main
 
-import "log"
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+)
+
+var db *gorm.DB
 
 func main() {
-	log.Panic("Not Implemented")
+	r := gin.Default()
+
+	r.GET("/ping", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "pong",
+		})
+	})
+
+	r.GET("/pods", podsHandler)
+
+	r.Run()
 }
+
+func podsHandler(c *gin.Context) {}

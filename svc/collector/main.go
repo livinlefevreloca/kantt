@@ -1,9 +1,13 @@
 package main
 
 import (
-	"github.com/endophage/kantt/pkg/config"
-	"github.com/endophage/kantt/pkg/eventsource"
-	"github.com/endophage/kantt/pkg/storage"
+	"log"
+	"os"
+	"os/signal"
+
+	"github.com/livinlefevreloca/kantt/pkg/config"
+	"github.com/livinlefevreloca/kantt/pkg/eventsource"
+	"github.com/livinlefevreloca/kantt/pkg/storage"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -11,23 +15,29 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	events_v1 "k8s.io/client-go/kubernetes/typed/events/v1"
 	"k8s.io/client-go/rest"
-	"log"
-	"os"
-	"os/signal"
+	"k8s.io/klog/v2"
 )
 
 func main() {
 	// Setup database
-	db := config.Database()
+	db := config.Database() // just a workaround, normally v should be passed via command line
+	l := klog.Level(6)
+	_ = l.Set("6")
+
+	// get in cluster config
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		panic("Failed to get in cluster config: " + err.Error())
+	}
 
 	// Setup event watcher
-	eventClient, err := events_v1.NewForConfig(&rest.Config{})
+	eventClient, err := events_v1.NewForConfig(config)
 	if err != nil {
-		panic(err)
+		panic("Failed to make eventCleint: " + err.Error())
 	}
 	eventWatcher, err := eventsource.NewWatcher(eventClient.Events(api_v1.NamespaceAll))
 	if err != nil {
-		panic(err)
+		panic("Failed to start eventWatcher: " + err.Error())
 	}
 	resultChan := eventWatcher.ResultChan()
 

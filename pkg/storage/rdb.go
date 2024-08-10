@@ -15,6 +15,7 @@ type Resource struct {
 
 type Event struct {
 	gorm.Model
-	Type     watch.EventType
-	Resource Resource
+	Type       watch.EventType
+	ResourceID int
+	Resource   Resource
 }

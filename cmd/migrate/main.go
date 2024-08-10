@@ -1,13 +1,10 @@
 package main
 
 import (
-	"github.com/endophage/kantt/pkg/config"
-	"github.com/endophage/kantt/pkg/storage"
+	"github.com/livinlefevreloca/kantt/pkg/config"
 )
 
 func main() {
 	db := config.Database()
-	// Migrate the schema
-	db.AutoMigrate(storage.Resource{})
-	db.AutoMigrate(storage.Event{})
+	config.RunMigrations(db)
 }
