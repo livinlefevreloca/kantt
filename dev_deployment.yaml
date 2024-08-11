@@ -12,8 +12,8 @@ kind: ClusterRole
 metadata:
   name: kantt-collector-cluster-role
 rules:
-- apiGroups: ["events.k8s.io"]
-  resources: ["events"]
+- apiGroups: [""]
+  resources: ["pods"]
   verbs: ["list", "watch", "get"]
 ---
 # kantt-collector-cluster-role-binding

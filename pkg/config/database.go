@@ -10,11 +10,13 @@ import (
 	"gorm.io/gorm"
 )
 
-func RunMigrations(db *gorm.DB, models ...interface{}) {
-	// Migrate the schema
-	for _, model := range models {
-		db.AutoMigrate(model)
-	}
+func RunMigrations(db *gorm.DB) {
+	db.AutoMigrate(&storage.Pod{})
+	db.AutoMigrate(&storage.Owner{})
+	db.AutoMigrate(&storage.Node{})
+	db.AutoMigrate(&storage.NodePod{})
+
+	storage.AddIndexOnExpression(db)
 }
 
 func Database() *gorm.DB {
@@ -27,7 +29,7 @@ func Database() *gorm.DB {
 	if engine == "sqlite" {
 		db, err = gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
 		// If running with sqlite we need to migrate the schema on startup
-		RunMigrations(db, &storage.Resource{}, &storage.Event{})
+		RunMigrations(db)
 	} else if engine == "postgres" {
 		db, err = gorm.Open(
 			postgres.Open(
