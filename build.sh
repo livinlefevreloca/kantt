@@ -14,5 +14,18 @@ if [ "$?" -ne 0 ]; then
   echo "Failed to build the project."
   exit 1
 fi
+
+
+if [[ "$1" == '--no-cache' ]]; then
+docker buildx build  --no-cache --platform linux/amd64 --progress plain  -t kantt-dashboard -f ./Dockerfile.dashboard .
+else
+docker buildx build --platform linux/amd64 --progress plain  -t kantt-dashboard -f ./Dockerfile.dashboard .
+fi
+if [ "$?" -ne 0 ]; then
+  echo "Failed to build the project."
+  exit 1
+fi
 docker tag kantt-collector livinlefevrel0ca/kantt-collector:latest
+docker tag kantt-dashboard livinlefevrel0ca/kantt-dashboard:latest
 docker push livinlefevrel0ca/kantt-collector:latest
+docker push livinlefevrel0ca/kantt-dashboard:latest

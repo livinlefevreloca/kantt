@@ -1,0 +1,21 @@
+FROM golang:1.21-alpine AS builder
+
+WORKDIR /app
+COPY ./config.toml ./go.mod ./go.sum /app
+RUN go mod download
+COPY ./svc/ /app/svc/
+COPY ./pkg/ /app/pkg/
+ENV CGO_ENABLED=1
+RUN apk --no-cache add gcc musl-dev
+
+RUN go build -o dashboard ./svc/dashboard/ && \
+    chmod +x dashboard
+
+FROM alpine:latest AS dashboard
+# install sqlite for use in development
+RUN apk --no-cache add ca-certificates sqlite && mkdir /app
+WORKDIR /app
+COPY --from=builder /app/dashboard /app/dashboard
+COPY --from=builder /app/config.toml /app/config.toml
+
+ENTRYPOINT ["/app/dashboard"]

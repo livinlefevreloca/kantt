@@ -31,12 +31,15 @@ func main() {
 }
 
 type PodInfo struct {
-	Name      string `json:"name"`
-	Namespace string `json:"namespace"`
-	OwnerName string `json:"ownerName"`
-	OwnerKind string `json:"ownerKind"`
-	NodeName  string `json:"nodeName"`
-	NodeIP    string `json:"nodeIP"`
+	Name        string    `json:"name"`
+	Namespace   string    `json:"namespace"`
+	PendingTime time.Time `json:"pendingTime"`
+	StartTime   time.Time `json:"startTime"`
+	EndTime     time.Time `json:"endTime"`
+	OwnerName   string    `json:"ownerName"`
+	OwnerKind   string    `json:"ownerKind"`
+	NodeName    string    `json:"nodeName"`
+	NodeIP      string    `json:"nodeIP"`
 }
 
 type Handler struct {
@@ -73,19 +76,23 @@ func (h *Handler) podsHandler(c *gin.Context) {
 
 	query := db.Model(&storage.Pod{}).
 		Select(`
-				pods.name
-				, pods.namespace
-				, owners.name as owner_name
-				, owners.kind as owner_kind
-				, nodes.name as node_name
-				, nodes.ip as node_ip
+				pods.name as name
+				, pods.namespace as namespace
+				, pods.pending_time as pendingTime
+				, pods.starting_time as startTime
+				, pods.ending_time as endTime
+				, owners.name as ownerName
+				, owners.kind as ownerKind
+				, nodes.name as nodeName
+				, nodes.ip as nodeIP
 			`).
 		Joins("JOIN owners ON pods.owner_id = owners.id").
 		Joins("JOIN node_pods ON pods.id = node_pods.pod_id").
 		Joins("JOIN nodes ON node_pods.node_id = nodes.id").
 		Where(`
 				coalesce(pending_time, starting_time, ending_time) >= ?
-				AND coalesce(pending_time, starting_time, ending_time) <= ?
+				AND (coalesce(pending_time, starting_time, ending_time) <= ?
+				OR ending_time IS NULL)
 				`,
 			startTime,
 			endTime,

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -58,6 +60,8 @@ func main() {
 		0,
 	)
 
+	ownerCache := NewOwnerCache(clientSet)
+
 	podInformer := factory.Core().V1().Pods().Informer()
 	defer runtime.HandleCrash()
 
@@ -82,7 +86,7 @@ func main() {
 			"namespace", pod.Namespace,
 			"phase", pod.Status.Phase,
 		)
-		createOrUpdatePod(db, pod)
+		createOrUpdatePod(db, pod, ownerCache)
 	}
 
 	// Handle add, update and delete events for pods and update the database
@@ -102,7 +106,7 @@ func main() {
 					"old_pod_namespace", oldPod.Namespace,
 					"old_pod_phase", oldPod.Status.Phase,
 				)
-				createOrUpdatePod(db, newPod)
+				createOrUpdatePod(db, newPod, ownerCache)
 			},
 			DeleteFunc: addOrDeletePod,
 		},
@@ -118,17 +122,24 @@ func main() {
 }
 
 // Update the database with the pod information as events are received
-func createOrUpdatePod(db *gorm.DB, pod *v1.Pod) error {
+func createOrUpdatePod(db *gorm.DB, pod *v1.Pod, ownerCache *OwnerCache) error {
 	// Get the owner of the pod
-	owner, err := GetOwner(db, pod)
+	owner, err := GetOwner(db, pod, ownerCache)
 	if err != nil {
+		slog.Error("No owner found for pod", "pod", pod.Name, "namespace", pod.Namespace, "error", err)
 		return err
 	}
+
 	db.Clauses(clause.OnConflict{DoNothing: true}).Create(owner)
 
 	var storedPod *storage.Pod
 	switch pod.Status.Phase {
 	case v1.PodPending:
+		slog.Info(
+			"Pod pending event",
+			"pod", pod.Name,
+			"namespace", pod.Namespace,
+		)
 		storedPod = &storage.Pod{
 			Name:        pod.Name,
 			Namespace:   pod.Namespace,
@@ -140,6 +151,11 @@ func createOrUpdatePod(db *gorm.DB, pod *v1.Pod) error {
 			DoUpdates: clause.AssignmentColumns([]string{"pending_time"}),
 		}).Create(storedPod)
 	case v1.PodRunning:
+		slog.Info(
+			"Pod running event",
+			"pod", pod.Name,
+			"namespace", pod.Namespace,
+		)
 		storedPod = &storage.Pod{
 			Name:         pod.Name,
 			Namespace:    pod.Namespace,
@@ -151,6 +167,11 @@ func createOrUpdatePod(db *gorm.DB, pod *v1.Pod) error {
 			DoUpdates: clause.AssignmentColumns([]string{"starting_time"}),
 		}).Create(storedPod)
 	case v1.PodSucceeded, v1.PodFailed:
+		slog.Info(
+			"Pod succeeded/failed event",
+			"pod", pod.Name,
+			"namespace", pod.Namespace,
+		)
 		storedPod = &storage.Pod{
 			Name:       pod.Name,
 			Namespace:  pod.Namespace,
@@ -223,9 +244,19 @@ const (
 	OWNER_DAEMONSET   = "DaemonSet"
 )
 
-func GetOwner(db *gorm.DB, pod *v1.Pod) (*storage.Owner, error) {
+func GetOwner(db *gorm.DB, pod *v1.Pod, ownerCache *OwnerCache) (*storage.Owner, error) {
 	var ownerTypes []string
-	for _, ownerRef := range pod.OwnerReferences {
+	ownerRefs := pod.OwnerReferences
+
+	if ownerRefs == nil {
+		var err error
+		ownerRefs, err = ownerCache.GetOwner(pod.Name, pod.Namespace)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	for _, ownerRef := range ownerRefs {
 		ok, ownerKind := getOwnerKind(ownerRef.Kind)
 		if !ok {
 			ownerTypes = append(ownerTypes, ownerRef.Kind)
@@ -238,7 +269,9 @@ func GetOwner(db *gorm.DB, pod *v1.Pod) (*storage.Owner, error) {
 		}
 		switch owner.Kind {
 		case OWNER_DEPLOYMENT:
+			return &owner, nil
 		case OWNER_STATEFULSET:
+			return &owner, nil
 		case OWNER_DAEMONSET:
 			return &owner, nil
 		default:
@@ -259,6 +292,39 @@ func getOwnerKind(ownerType string) (bool, string) {
 	default:
 		return false, ""
 	}
+}
+
+type OwnerCache struct {
+	owners map[string][]metav1.OwnerReference
+	client kubernetes.Interface
+}
+
+func NewOwnerCache(client kubernetes.Interface) *OwnerCache {
+	return &OwnerCache{
+		owners: make(map[string][]metav1.OwnerReference),
+		client: client,
+	}
+}
+
+func (o *OwnerCache) fetchOwner(podName string, namespace string) ([]metav1.OwnerReference, error) {
+	pod, err := o.client.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return pod.OwnerReferences, nil
+}
+
+func (o *OwnerCache) GetOwner(podName string, namespace string) ([]metav1.OwnerReference, error) {
+	owners, ok := o.owners[podName]
+	if !ok {
+		owners, err := o.fetchOwner(podName, namespace)
+		if err != nil {
+			return nil, err
+		}
+		o.owners[podName] = owners
+		return owners, nil
+	}
+	return owners, nil
 }
 
 func createNode(db *gorm.DB, pod *v1.Pod) (*storage.Node, bool) {

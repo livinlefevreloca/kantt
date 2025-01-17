@@ -8,6 +8,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 func RunMigrations(db *gorm.DB) {
@@ -27,7 +28,7 @@ func Database() *gorm.DB {
 	)
 	fmt.Println("engine: ", engine)
 	if engine == "sqlite" {
-		db, err = gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
+		db, err = gorm.Open(sqlite.Open("test.db"), &gorm.Config{Logger: logger.Default.LogMode(logger.Info)})
 		// If running with sqlite we need to migrate the schema on startup
 		RunMigrations(db)
 	} else if engine == "postgres" {

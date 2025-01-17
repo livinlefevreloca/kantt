@@ -2,7 +2,7 @@
 kind: Namespace
 apiVersion: v1
 metadata:
-  name: kantt-collector
+  name: kantt
 ---
 # kantt-collector-cluster-role
 # Allows the collector service to listent to events
@@ -10,7 +10,7 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: kantt-collector-cluster-role
+  name: kantt-cluster-role
 rules:
 - apiGroups: [""]
   resources: ["pods"]
@@ -21,46 +21,61 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: kantt-collector-cluster-role-binding
+  name: kantt-cluster-role-binding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: kantt-collector-cluster-role
+  name: kantt-cluster-role
 subjects:
 - kind: ServiceAccount
-  name: kantt-collector
-  namespace: kantt-collector
+  name: kantt
+  namespace: kantt
 ---
 # kantt-collector-service-account
 # Service account for the collector service
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: kantt-collector
-  namespace: kantt-collector
+  name: kantt
+  namespace: kantt
 ---
 # kantt-collector-deployment
 # Deployment for the collector service
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: kantt-collector
-  namespace: kantt-collector
+  name: kantt
+  namespace: kantt
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: kantt-collector
+      app: kantt
   template:
     metadata:
       labels:
-          app: kantt-collector
+          app: kantt
     spec:
-      serviceAccountName: kantt-collector
+      serviceAccountName: kantt
       containers:
       - name: collector
         image: livinlefevrel0ca/kantt-collector:latest
         imagePullPolicy: Always
+      - name: dashboard
+        image: livinlefevrel0ca/kantt-dashboard:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8080
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kantt
+spec:
+  type: ClusterIP
+  selector:
+    app: kantt
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
