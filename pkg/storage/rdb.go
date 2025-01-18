@@ -9,13 +9,12 @@ import (
 
 type Pod struct {
 	gorm.Model
-	Name         string `gorm:"uniqueIndex:pod_name_namespace_uniq;not null"`
-	Namespace    string `gorm:"uniqueIndex:pod_name_namespace_uniq;not null"`
-	OwnerID      int
-	Owner        Owner
-	PendingTime  time.Time `gorm:"default:null;index:pod_pending_time_idx"`
-	StartingTime time.Time `gorm:"default:null;index:pod_starting_time_idx"`
-	EndingTime   time.Time `gorm:"default:null;index:pod_ending_time_idx"`
+	Name       string `gorm:"uniqueIndex:pod_name_namespace_uniq;not null"`
+	Namespace  string `gorm:"uniqueIndex:pod_name_namespace_uniq;not null"`
+	OwnerID    int
+	Owner      Owner
+	CreateTime time.Time `gorm:"default:null;index:pod_create_time_idx"`
+	DeleteTime time.Time `gorm:"default:null;index:pod_delete_time_idx"`
 }
 
 // A pod is tied to a deployment, statefulset, or daemonset
@@ -41,15 +40,15 @@ type NodePod struct {
 
 type Node struct {
 	gorm.Model
-	Name string
-	IP   string
+	Name string `gorm:"uniqueIndex:name_uniq;not null"`
+	IP   string `gorm:"uniqueIndex:ip_uniq;not null"`
 }
 
 // Add coalesce index
 func AddIndexOnExpression(db *gorm.DB) {
 	sql := `
-    CREATE INDEX IF NOT EXISTS pod_times_coalesce_idx
-    ON pods (COALESCE(pending_time, starting_time, ending_time))
+    CREATE INDEX IF NOT EXISTS pod_create_delete_times_idx
+    ON pods (create_time, delete_time)
     `
 	result := db.Exec(sql)
 	if result.Error != nil {

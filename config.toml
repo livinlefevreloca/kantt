@@ -1,1 +1,2 @@
-database = {engine = "sqlite"}
+database = {engine = "postgres", host = "docker.for.mac.localhost", user = "postgres", password = "password", database = "kantt", sslmode = "disable", port = 5432, timezone = "UTC"}
+kube = {config = "/root/.kube/config", namespace = "adamlefevre"}

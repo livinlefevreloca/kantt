@@ -2,20 +2,36 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
+	"os"
 
 	"github.com/livinlefevreloca/kantt/pkg/storage"
 	"github.com/spf13/viper"
 	"gorm.io/driver/postgres"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 func RunMigrations(db *gorm.DB) {
-	db.AutoMigrate(&storage.Pod{})
-	db.AutoMigrate(&storage.Owner{})
-	db.AutoMigrate(&storage.Node{})
-	db.AutoMigrate(&storage.NodePod{})
+	err := db.Debug().AutoMigrate(&storage.Pod{})
+	if err != nil {
+		slog.Error("Error migrating Pod", "Error", err)
+		os.Exit(1)
+	}
+	db.Debug().AutoMigrate(&storage.Owner{})
+	if err != nil {
+		slog.Error("Error migrating Owner", "Error", err)
+		os.Exit(1)
+	}
+	db.Debug().AutoMigrate(&storage.Node{})
+	if err != nil {
+		slog.Error("Error migrating Node", "Error", err)
+		os.Exit(1)
+	}
+	db.Debug().AutoMigrate(&storage.NodePod{})
+	if err != nil {
+		slog.Error("Error migrating NodePod", "Error", err)
+		os.Exit(1)
+	}
 
 	storage.AddIndexOnExpression(db)
 }
@@ -26,19 +42,15 @@ func Database() *gorm.DB {
 		db     *gorm.DB
 		err    error
 	)
-	fmt.Println("engine: ", engine)
-	if engine == "sqlite" {
-		db, err = gorm.Open(sqlite.Open("test.db"), &gorm.Config{Logger: logger.Default.LogMode(logger.Info)})
-		// If running with sqlite we need to migrate the schema on startup
-		RunMigrations(db)
-	} else if engine == "postgres" {
+	fmt.Println("Database engine: ", engine)
+	if engine == "postgres" {
 		db, err = gorm.Open(
 			postgres.Open(
-				fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=%s",
+				fmt.Sprintf("host=%s user=%s password=%s database=%s port=%s sslmode=%s TimeZone=%s",
 					viper.GetString("database.host"),
 					viper.GetString("database.user"),
 					viper.GetString("database.password"),
-					viper.GetString("database.dbname"),
+					viper.GetString("database.database"),
 					viper.GetString("database.port"),
 					viper.GetString("database.sslmode"),
 					viper.GetString("database.timezone"),
@@ -46,6 +58,10 @@ func Database() *gorm.DB {
 			),
 			&gorm.Config{},
 		)
+		RunMigrations(db)
+	} else {
+		slog.Error("Unsupported database engine", "Engine", engine)
+		err = fmt.Errorf("unsupported database engine: %s", engine)
 	}
 	if err != nil {
 		panic(fmt.Errorf("failed to connect database: %w", err))

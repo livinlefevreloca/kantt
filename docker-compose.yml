@@ -1,0 +1,29 @@
+services:
+  collector:
+    image: kantt-collector:latest
+    entrypoint: ["/app/collector", "--local"]
+    volumes:
+      - ./data:/data
+      - /Users/adam/.kube/config:/root/.kube/config
+    environment:
+      - KUBECONFIG=/root/.kube/config
+    depends_on:
+      - postgres
+  dashboard:
+    image: kantt-dashboard:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+    depends_on:
+      - postgres
+  postgres:
+    image: postgres:12
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: kantt
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data

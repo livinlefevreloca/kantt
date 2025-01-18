@@ -11,6 +11,7 @@ import (
 
 	"github.com/livinlefevreloca/kantt/pkg/config"
 	"github.com/livinlefevreloca/kantt/pkg/storage"
+	"github.com/spf13/viper"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	v1 "k8s.io/api/core/v1"
@@ -36,10 +37,14 @@ func main() {
 	flag.BoolVar(&local, "local", true, "Use local config")
 	flag.Parse()
 
+	var (
+		kubeconfig = viper.GetString("kube.config")
+	)
+
 	var config *rest.Config
 	var err error
 	if local {
-		config, err = clientcmd.BuildConfigFromFlags("", os.Getenv("KUBECONFIG"))
+		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
 		if err != nil {
 			panic("Failed to get local config: " + err.Error())
 		}
@@ -129,67 +134,31 @@ func createOrUpdatePod(db *gorm.DB, pod *v1.Pod, ownerCache *OwnerCache) error {
 		slog.Error("No owner found for pod", "pod", pod.Name, "namespace", pod.Namespace, "error", err)
 		return err
 	}
-
 	db.Clauses(clause.OnConflict{DoNothing: true}).Create(owner)
 
 	var storedPod *storage.Pod
-	switch pod.Status.Phase {
-	case v1.PodPending:
-		slog.Info(
-			"Pod pending event",
-			"pod", pod.Name,
-			"namespace", pod.Namespace,
-		)
-		storedPod = &storage.Pod{
-			Name:        pod.Name,
-			Namespace:   pod.Namespace,
-			Owner:       *owner,
-			PendingTime: time.Now(),
-		}
-		db.Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "name"}, {Name: "namespace"}},
-			DoUpdates: clause.AssignmentColumns([]string{"pending_time"}),
-		}).Create(storedPod)
-	case v1.PodRunning:
-		slog.Info(
-			"Pod running event",
-			"pod", pod.Name,
-			"namespace", pod.Namespace,
-		)
-		storedPod = &storage.Pod{
-			Name:         pod.Name,
-			Namespace:    pod.Namespace,
-			Owner:        *owner,
-			StartingTime: time.Now(),
-		}
-		db.Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "name"}, {Name: "namespace"}},
-			DoUpdates: clause.AssignmentColumns([]string{"starting_time"}),
-		}).Create(storedPod)
-	case v1.PodSucceeded, v1.PodFailed:
-		slog.Info(
-			"Pod succeeded/failed event",
-			"pod", pod.Name,
-			"namespace", pod.Namespace,
-		)
-		storedPod = &storage.Pod{
-			Name:       pod.Name,
-			Namespace:  pod.Namespace,
-			Owner:      *owner,
-			EndingTime: time.Now(),
-		}
-		db.Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "name"}, {Name: "namespace"}},
-			DoUpdates: clause.AssignmentColumns([]string{"ending_time"}),
-		}).Create(storedPod)
-	case v1.PodUnknown:
-		slog.Error(
-			"Got pod in unknown phase ignoring",
-			"pod", pod.Name,
-			"namespace", pod.Namespace,
-			"phase", pod.Status.Phase,
-		)
+	storedPod = &storage.Pod{
+		Name:       pod.Name,
+		Namespace:  pod.Namespace,
+		Owner:      *owner,
+		CreateTime: pod.CreationTimestamp.Time,
 	}
+
+	if pod.DeletionTimestamp != nil {
+		storedPod.DeleteTime = pod.DeletionTimestamp.Time
+	}
+
+	slog.Info(
+		"Pod event",
+		"pod", pod.Name,
+		"namespace", pod.Namespace,
+	)
+
+	// Store the pod information
+	db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "name"}, {Name: "namespace"}},
+		DoUpdates: clause.AssignmentColumns([]string{"delete_time"}),
+	}).Create(storedPod)
 
 	// Store the node and the pod node relationship
 	node, ok := createNode(db, pod)
@@ -331,6 +300,11 @@ func createNode(db *gorm.DB, pod *v1.Pod) (*storage.Node, bool) {
 	// Get the node information
 	nodeName := pod.Spec.NodeName
 	if nodeName == "" {
+		slog.Error(
+			"Pod does not have a node name",
+			"pod",
+			pod.Name,
+		)
 		return nil, false
 	}
 	nodeIP := pod.Status.HostIP
@@ -340,5 +314,8 @@ func createNode(db *gorm.DB, pod *v1.Pod) (*storage.Node, bool) {
 		IP:   nodeIP,
 	}
 	db.Clauses(clause.OnConflict{DoNothing: true}).Create(&node)
+	if node.ID == 0 {
+		db.Where("name = ?", nodeName).First(&node)
+	}
 	return &node, true
 }
