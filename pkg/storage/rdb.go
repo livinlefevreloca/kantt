@@ -30,9 +30,9 @@ type Owner struct {
 // through a NodePod record
 type NodePod struct {
 	gorm.Model
-	NodeID    int
+	NodeID    int `gorm:"uniqueIndex:node_pod_uniq;not null"`
 	Node      Node
-	PodID     int
+	PodID     int `gorm:"uniqueIndex:node_pod_uniq;not null"`
 	Pod       Pod
 	StartTime time.Time `gorm:"default:null"`
 	EndTime   time.Time `gorm:"default:null"`

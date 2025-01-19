@@ -1,0 +1,75 @@
+.gantt-container {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+    margin: 20px 1vw; /* Centers the container horizontally */
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background-color: #fff;
+    height: 70vh;
+    width: 95vw;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch; /* Stretch elements inside */
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1); /* Optional: Add some shadow */
+    overflow: auto; /* Enable scrolling */
+}
+
+/* Header for days */
+.gantt-header {
+    display: flex;
+    background-color: black;
+    font-weight: bold;
+    border-bottom: 1px solid #ccc;
+    width: 100%;
+    flex-shrink: 0;
+}
+
+.gantt-time-block {
+    text-align: center;
+    border-right: 1px solid #ccc;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Body of the Gantt chart */
+.gantt-body {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+/* Each task row */
+.gantt-row {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding: 5px 0;
+    width: 100%;
+}
+
+.gantt-task-name {
+    width: 20%;
+    padding-right: 10px;
+    color: black;
+    text-align: right;
+    white-space: nowrap; /* Prevent wrapping of task names */
+    overflow: hidden; /* Hide overflowing text */
+    text-overflow: ellipsis; /* Show ellipsis for overflowing text */
+}
+
+.gantt-time-block-padding {
+    flex-shrink: 0;
+}
+
+/* Task bar styling */
+.gantt-task-wrapper {
+    flex: 3;
+    height: 20px;
+    position: relative;
+}
+
+.gantt-task {
+    height: 20px;
+    border-radius: 4px;
+    position: absolute;
+}

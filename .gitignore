@@ -22,3 +22,6 @@ go.work
 
 # data files
 data/
+
+# node_modules
+node_modules/
