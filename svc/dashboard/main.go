@@ -28,6 +28,8 @@ func main() {
 	handler := Handler{db: db}
 
 	r.GET("/pods", handler.podsHandler)
+	r.GET("/nodes", handler.NodesHandler)
+	r.GET("/namespaces", handler.NamespacesHandler)
 
 	r.Run()
 }
@@ -59,8 +61,24 @@ type PodInfo struct {
 	NodeIP     sql.NullString `json:"nodeip"`
 }
 
+type NodeInfo struct {
+	Name sql.NullString `json:"name"`
+}
+
+type NamespaceInfo struct {
+	Namespace sql.NullString `json:"namespace"`
+}
+
 type Handler struct {
 	db *gorm.DB
+}
+
+func parseTime(timeStr string) (time.Time, error) {
+	timeStamp, err := strconv.ParseInt(timeStr, 10, 64)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return time.Unix(timeStamp, 0), nil
 }
 
 func (h *Handler) podsHandler(c *gin.Context) {
@@ -69,10 +87,8 @@ func (h *Handler) podsHandler(c *gin.Context) {
 	endTimeStr := c.Query("endTime")
 	namespace := c.DefaultQuery("namespace", "all")
 	node := c.DefaultQuery("node", "all")
-	owner := c.DefaultQuery("owner", "all")
-	nodeIP := c.DefaultQuery("nodeIP", "all")
 
-	startTimeStamp, err := strconv.ParseInt(startTimeStr, 10, 64)
+	startTime, err := parseTime(startTimeStr)
 	if err != nil {
 		slog.Error("Error parsing startTimeStamp", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -80,9 +96,8 @@ func (h *Handler) podsHandler(c *gin.Context) {
 		})
 		return
 	}
-	startTime := time.Unix(startTimeStamp, 0)
 
-	endTimeStamp, err := strconv.ParseInt(endTimeStr, 10, 64)
+	endTime, err := parseTime(endTimeStr)
 	if err != nil {
 		slog.Error("Error parsing endTimeStamp", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -90,7 +105,6 @@ func (h *Handler) podsHandler(c *gin.Context) {
 		})
 		return
 	}
-	endTime := time.Unix(endTimeStamp, 0)
 
 	query := db.Model(&storage.Pod{}).
 		Select(`
@@ -115,17 +129,115 @@ func (h *Handler) podsHandler(c *gin.Context) {
 		)
 	if namespace != "all" {
 		query.Where("pods.namespace = ?", namespace)
-	} else if node != "all" {
+	}
+
+	if node != "all" {
 		query.Where("nodes.name = ?", node)
-	} else if owner != "all" {
-		query.Where("owners.name = ?", owner)
-	} else if nodeIP != "all" {
-		query.Where("nodes.ip = ?", nodeIP)
 	}
 
 	var pods []PodInfo
 	query.Find(&pods)
 	c.JSON(http.StatusOK, gin.H{
 		"pods": pods,
+	})
+}
+
+func (h *Handler) NodesHandler(c *gin.Context) {
+	db := h.db
+	startTimeStr := c.Query("startTime")
+	endTimeStr := c.Query("endTime")
+	namespace := c.DefaultQuery("namespace", "all")
+
+	startTimeStamp, err := strconv.ParseInt(startTimeStr, 10, 64)
+	if err != nil {
+		slog.Error("Error parsing startTimeStamp", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid startTime parameter",
+		})
+		return
+	}
+	startTime := time.Unix(startTimeStamp, 0)
+
+	endTimeStamp, err := strconv.ParseInt(endTimeStr, 10, 64)
+	if err != nil {
+		slog.Error("Error parsing endTimeStamp", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid endTime parameter",
+		})
+		return
+	}
+	endTime := time.Unix(endTimeStamp, 0)
+
+	query := db.Model(&storage.Node{}).
+		Select(`distinct nodes.name as "Name"`).
+		Joins("JOIN node_pods ON nodes.id = node_pods.node_id").
+		Joins("JOIN pods ON node_pods.pod_id = pods.id").
+		Where(`
+			pods.create_time <= ? AND
+			(pods.delete_time >= ? OR pods.delete_time IS NULL)
+			`,
+			startTime,
+			endTime,
+		)
+
+	if namespace != "all" {
+		query.Where("pods.namespace = ?", namespace)
+	}
+
+	var nodes []NodeInfo
+	query.Find(&nodes)
+	c.JSON(http.StatusOK, gin.H{
+		"nodes": nodes,
+	})
+
+}
+
+func (h *Handler) NamespacesHandler(c *gin.Context) {
+	db := h.db
+	startTimeStr := c.Query("startTime")
+	endTimeStr := c.Query("endTime")
+	node := c.DefaultQuery("node", "all")
+
+	startTime, err := parseTime(startTimeStr)
+	if err != nil {
+		slog.Error("Error parsing startTimeStamp", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid startTime parameter",
+		})
+		return
+	}
+
+	endTime, err := parseTime(endTimeStr)
+	if err != nil {
+		slog.Error("Error parsing endTimeStamp", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid endTime parameter",
+		})
+		return
+	}
+
+	query := db.Model(&storage.Pod{}).
+		Select(`
+				distinct pods.namespace as "Namespace"
+			`)
+
+	if node != "all" {
+		query = query.Joins("JOIN node_pods ON pods.id = node_pods.pod_id").
+			Joins("JOIN nodes ON node_pods.node_id = nodes.id").
+			Where("nodes.name = ?", node)
+	}
+
+	query = query.Where(`
+		pods.create_time <= ? AND
+		(pods.delete_time >= ? OR pods.delete_time IS NULL)
+		`,
+		startTime,
+		endTime,
+	)
+
+	var namespaces []NamespaceInfo
+	query.Find(&namespaces)
+	c.JSON(http.StatusOK, gin.H{
+		"namespaces": namespaces,
 	})
 }

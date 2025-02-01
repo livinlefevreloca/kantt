@@ -1,3 +1,22 @@
+.inputs-container {
+    display: flex;
+    justify-content: left;
+    flex-direction: row;
+    margin: 0 1vw;
+    margin-bottom: 5vh;
+}
+
+.start-time-input, .end-time-input, .node-input, .namespace-input, .submit-button {
+    display: flex;
+    border-radius: 8px;
+    margin-right: 1vw;
+    border: 2px solid transparent;
+}
+
+.node-input, .namespace-input {
+    padding: 0.6em 1.2em;
+}
+
 .gantt-container {
     font-family: Arial, sans-serif;
     padding: 20px;
@@ -5,13 +24,57 @@
     border: 1px solid #ccc;
     border-radius: 8px;
     background-color: #fff;
-    height: 70vh;
+    height: 80vh;
     width: 95vw;
     display: flex;
     flex-direction: column;
     align-items: stretch; /* Stretch elements inside */
     box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1); /* Optional: Add some shadow */
-    overflow: auto; /* Enable scrolling */
+}
+
+.gantt-time-axis {
+    position: sticky;
+    display: flex;
+    flex-direction: row;
+    flex-shrink: 1;
+    z-index: 1;
+    padding-bottom: 20px;
+}
+
+.gantt-time-axis-padding {
+    display: flex;
+    flex-shrink: 0;
+    height: 100%;
+    padding-right: 10px;
+}
+
+.gantt-time-axis-dateline {
+    display: flex;
+    border-top: 2px solid #ccc;
+    font-weight: bold;
+}
+
+.gantt-time-axis-dateline:last-child {
+    border-right: 2px solid #ccc;
+}
+
+.gantt-time-axis-dateline-item {
+    border-left: 2px solid #ccc;
+    width: 0;
+    flex-grow: 1;
+    flex-basis: 0;
+    font-size: 0.8rem;
+    height: 5px;
+    padding-left: 10px;
+    padding-top: 10px;
+    color: #666;
+}
+
+.gantt-group-name {
+    font-weight: bold;
+    padding-top: 10px;
+    border-bottom: 2px solid #ccc;
+    color: black;
 }
 
 /* Header for days */
@@ -36,6 +99,7 @@
     display: flex;
     flex-direction: column;
     width: 100%;
+    overflow-y: auto; /* Enable scrolling */
 }
 
 /* Each task row */
@@ -70,6 +134,6 @@
 
 .gantt-task {
     height: 20px;
-    border-radius: 4px;
+    border-radius: 12px;
     position: absolute;
 }

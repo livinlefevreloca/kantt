@@ -1,6 +1,8 @@
 {
   "dependencies": {
     "@bitnoi.se/react-scheduler": "^0.3.1",
+    "@types/datejs": "^0.0.36",
+    "datejs": "^1.0.0-rc3",
     "styled": "^1.0.0",
     "uuid": "^11.0.5"
   }
